@@ -8,49 +8,46 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-          
+      - run: corepack enable
+
       - name: Install dependencies
-        run: |
-          npm install -g yarn
-          yarn install --frozen-lockfile
-          
+        run: pnpm i
+
       - name: Run tests
         run: |
-          yarn test
-          yarn test:integration
-          
+          pnpm test
+          pnpm test:integration
+
       - name: Build project
-        run: yarn build
-        
+        run: pnpm build
+
       - name: Extract version from tag
         id: get_version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
-          
+
       - name: Update package.json version
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           npm version $VERSION --no-git-tag-version
-          
+
       - name: Publish to NPM
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          
+
       - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
@@ -82,23 +79,5 @@ jobs:
             - Parallel file processing
             - Optimized project loading for scope
             - Reduced memory usage in monorepos
-            
-            ## Installation
-            
-            ```bash
-            npm install ts-prune@${{ steps.get_version.outputs.version }}
-            # or
-            yarn add ts-prune@${{ steps.get_version.outputs.version }}
-            ```
-            
-            ## Usage
-            
-            ```bash
-            # Basic usage
-            npx ts-prune
-            
-            # With new features
-            npx ts-prune --scope packages/my-package --parallel --performance
-            ```
           draft: false
           prerelease: false

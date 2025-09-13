@@ -1,9 +1,6 @@
 name: Publish to NPM
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -14,30 +11,30 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-          
+
       - name: Install dependencies
         run: |
-          npm install -g yarn
-          yarn install --frozen-lockfile
-          
+          npm install -g pnpm
+          pnpm install --frozen-lockfile
+
       - name: Run tests
         run: |
-          yarn test
-          yarn test:integration
-          
+          pnpm test
+          pnpm test:integration
+
       - name: Build project
-        run: yarn build
-        
+        run: pnpm build
+
       - name: Check if version exists
         id: check-version
         run: |
@@ -57,19 +54,19 @@ jobs:
             echo "Version $VERSION does not exist on npm"
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
-          
+
       - name: Update package.json version
         if: steps.check-version.outputs.exists == 'false'
         run: |
           VERSION="${{ steps.check-version.outputs.version }}"
           npm version $VERSION --no-git-tag-version
-          
+
       - name: Publish to NPM
         if: steps.check-version.outputs.exists == 'false'
-        run: npm publish
+        run: pnpm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          
+
       - name: Create GitHub Release
         if: steps.check-version.outputs.exists == 'false' && github.event_name == 'push'
         uses: actions/create-release@v1

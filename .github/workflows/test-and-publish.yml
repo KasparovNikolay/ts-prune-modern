@@ -3,11 +3,6 @@ name: Publish to NPM
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Branch to publish from'
-        required: true
-        default: 'master'
-        type: string
       version:
         description: 'Version to publish (e.g., 0.10.5)'
         required: true
@@ -16,35 +11,32 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch }}
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24.6.0'
           registry-url: 'https://registry.npmjs.org'
-          
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: latest
-          
+
+      - run: corepack enable
+
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        
+        run: pnpm i
+
       - name: Run tests
         run: |
           pnpm test
           pnpm test:integration
-          
+
       - name: Build project
         run: pnpm build
-        
+
       - name: Check if version exists
         id: check-version
         run: |
@@ -59,19 +51,19 @@ jobs:
             echo "Version $VERSION does not exist on npm"
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
-          
+
       - name: Update package.json version
         if: steps.check-version.outputs.exists == 'false'
         run: |
           VERSION="${{ steps.check-version.outputs.version }}"
           npm version $VERSION --no-git-tag-version
-          
+
       - name: Publish to NPM
         if: steps.check-version.outputs.exists == 'false'
-        run: npm publish
+        run: pnpm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          
+
       - name: Create Git Tag
         if: steps.check-version.outputs.exists == 'false'
         run: |
@@ -84,7 +76,7 @@ jobs:
           git push origin "v$VERSION"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Create GitHub Release
         if: steps.check-version.outputs.exists == 'false'
         uses: actions/create-release@v1
@@ -123,7 +115,7 @@ jobs:
             ```bash
             npm install ts-prune@${{ steps.check-version.outputs.version }}
             # or
-            yarn add ts-prune@${{ steps.check-version.outputs.version }}
+            pnpm add ts-prune@${{ steps.check-version.outputs.version }}
             ```
             
             ## Usage
