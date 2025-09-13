@@ -47,11 +47,5 @@
     "/lib"
   ],
   "bin": "./lib/index.js",
-  "repository": "git@github.com:nadeesha/ts-prune.git",
-  "release": {
-    "branches": [
-      "master"
-    ]
-  },
   "types": "lib/index.d.ts"
 }
