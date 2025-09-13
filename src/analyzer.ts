@@ -18,6 +18,7 @@ import countBy from "lodash/fp/countBy";
 import last from "lodash/fp/last";
 import { realpathSync } from "fs";
 import { IConfigInterface } from "./configurator";
+import path from "path";
 
 type OnResultType = (result: IAnalysedResult) => void;
 
@@ -154,6 +155,17 @@ const mustIgnore = (symbol: Symbol, file: SourceFile) => {
 const lineNumber = (symbol: Symbol) =>
   symbol.getDeclarations().map(decl => decl.getStartLineNumber()).reduce((currentMin, current) => Math.min(currentMin, current), Infinity)
 
+const isFileInScope = (filePath: string, scopePath?: string): boolean => {
+  if (!scopePath) {
+    return true; // No scope restriction
+  }
+  
+  const normalizedScopePath = path.resolve(scopePath);
+  const normalizedFilePath = path.resolve(filePath);
+  
+  return normalizedFilePath.startsWith(normalizedScopePath);
+}
+
 export const getExported = (file: SourceFile) =>
   file.getExportSymbols().filter(symbol => !mustIgnore(symbol, file))
   .map(symbol => ({
@@ -202,7 +214,7 @@ const getReferences = (
   }
   return originalList;
 }
-export const getPotentiallyUnused = (file: SourceFile, skipper?: RegExp): IAnalysedResult => {
+export const getPotentiallyUnused = (file: SourceFile, skipper?: RegExp, scopePath?: string): IAnalysedResult => {
   const exported = getExported(file);
 
   const idsInFile = file.getDescendantsOfKind(ts.SyntaxKind.Identifier);
@@ -216,7 +228,11 @@ export const getPotentiallyUnused = (file: SourceFile, skipper?: RegExp): IAnaly
   const referenced = getReferences(
     file.getReferencingNodesInOtherSourceFiles(),
     skipper
-  ).reduce(
+  ).filter((node: SourceFileReferencingNodes) => {
+    // Only consider references from files within the scope
+    const referencingFile = node.getSourceFile();
+    return isFileInScope(referencingFile.getFilePath(), scopePath);
+  }).reduce(
       (previous, node: SourceFileReferencingNodes) => {
         const kind = node.getKind().toString();
         const value = nodeHandlers?.[kind]?.(node) ?? [];
@@ -252,13 +268,13 @@ const filterSkippedFiles = (sourceFiles: SourceFile[], skipper: RegExp | undefin
   return sourceFiles.filter(file => !skipper.test(file.getSourceFile().compilerNode.fileName));
 }
 
-export const analyze = (project: Project, onResult: OnResultType, entrypoints: string[], skipPattern?: string) => {
+export const analyze = (project: Project, onResult: OnResultType, entrypoints: string[], skipPattern?: string, scopePath?: string) => {
   const skipper = skipPattern ? new RegExp(skipPattern) : undefined;
 
   filterSkippedFiles(project.getSourceFiles(), skipper)
   .forEach(file => {
     [
-      getPotentiallyUnused(file, skipper),
+      getPotentiallyUnused(file, skipper, scopePath),
       ...getDefinitelyUsed(file),
     ].forEach(result => {
       if (!result.file) return // Prevent passing along a "null" filepath. Fixes #105

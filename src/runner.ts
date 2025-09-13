@@ -20,7 +20,7 @@ export const run = (config: IConfigInterface, output = console.log) => {
 
   const state = new State();
 
-  analyze(project, state.onResult, entrypoints, config.skip);
+  analyze(project, state.onResult, entrypoints, config.skip, config.scope);
 
   const presented = present(state);
 

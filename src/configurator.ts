@@ -8,6 +8,7 @@ export interface IConfigInterface {
   error?: string;
   skip?: string;
   unusedInModule?: string;
+  scope?: string;
 }
 
 const defaultConfig: IConfigInterface = {
@@ -16,6 +17,7 @@ const defaultConfig: IConfigInterface = {
   error: undefined,
   skip: undefined,
   unusedInModule: undefined,
+  scope: undefined,
 }
 
 const onlyKnownConfigOptions = pick(Object.keys(defaultConfig));
@@ -29,6 +31,7 @@ export const getConfig = () => {
     .option('-e, --error', 'Return error code if unused exports are found')
     .option('-s, --skip [regexp]', 'skip these files when determining whether code is used')
     .option('-u, --unusedInModule', 'Skip files that are used in module (marked as `used in module`)')
+    .option('--scope [path]', 'Limit analysis to files within the specified directory path (useful for monorepos)')
     .parse(process.argv))
 
   const defaultConfig = {

@@ -77,6 +77,23 @@ ts-prune -p tsconfig.dev.json
 - [gatsby-material-starter](https://github.com/Vagr9K/gatsby-material-starter/blob/bdeba4160319c1977c83ee90e035c7fe1bd1854c/themes/material/package.json#L147)
 - [DestinyItemManager](https://github.com/DestinyItemManager/DIM/blob/aeb43dd848b5137656e6f47812189a2beb970089/package.json#L26)
 
+#### Monorepo Usage
+
+For monorepos, you can use the `--scope` option to limit analysis to a specific package, improving performance by avoiding analysis of the entire monorepo:
+
+```bash
+# Analyze only the current package
+ts-prune --scope .
+
+# Analyze a specific package in a monorepo
+ts-prune --scope packages/my-package
+
+# Analyze with scope and other options
+ts-prune --scope packages/my-package --skip "\.test\.ts$" --error
+```
+
+This is particularly useful in monorepos where you want to find unused exports within a specific package without considering usage from other packages in the monorepo.
+
 ### Configuration
 
 ts-prune supports CLI and file configuration via [cosmiconfig](https://github.com/davidtheclark/cosmiconfig#usage) (all file formats are supported).
@@ -88,6 +105,7 @@ ts-prune supports CLI and file configuration via [cosmiconfig](https://github.co
 - `-e, --error` - return error code if unused exports are found
 - `-s, --skip` - skip these files when determining whether code is used. (For example, `.test.ts?` will stop ts-prune from considering an export in test file usages)
 - `-u, --unusedInModule` - skip files that are used in module (marked as `used in module`)
+- `--scope` - limit analysis to files within the specified directory path (useful for monorepos)
 
 CLI configuration options:
 

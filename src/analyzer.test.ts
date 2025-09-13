@@ -116,8 +116,8 @@ describe("analyzer", () => {
     expect(getPotentiallyUnused(starExport)).toEqual({
       file: "/project/starExport.ts",
       symbols: [
-        { name: "unusedC", line: 2, usedInModule:false },
-        { name: "UnusedT", line: 2, usedInModule:false },
+        { name: "unusedC", line: undefined, usedInModule:false },
+        { name: "UnusedT", line: undefined, usedInModule:false },
       ],
       type: 0,
     });
@@ -129,5 +129,53 @@ describe("analyzer", () => {
     );
 
     expect(trackWildcardUses(importNode)).toEqual(["x", "y", "z", "w", "ABC"]);
+  });
+
+  describe("scope functionality", () => {
+    const monorepoProject = new Project();
+    
+    // Create files in different packages
+    const packageAFile = monorepoProject.createSourceFile("/monorepo/packages/package-a/src/utils.ts", `
+      export const utilA = 'utilA';
+      export const unusedUtilA = 'unusedUtilA';
+    `);
+    
+    const packageBFile = monorepoProject.createSourceFile("/monorepo/packages/package-b/src/main.ts", `
+      import { utilA } from '../../package-a/src/utils';
+      export const mainB = 'mainB';
+    `);
+    
+    const packageAFile2 = monorepoProject.createSourceFile("/monorepo/packages/package-a/src/index.ts", `
+      import { utilA } from './utils';
+      export const indexA = 'indexA';
+    `);
+
+    it("should find unused exports when no scope is specified", () => {
+      const result = getPotentiallyUnused(packageAFile);
+      expect(result.symbols).toContainEqual({
+        name: "unusedUtilA",
+        line: 3,
+        usedInModule: false
+      });
+    });
+
+    it("should limit analysis to specified scope", () => {
+      // When scoped to package-a, utilA should be considered used (referenced by index.ts)
+      const result = getPotentiallyUnused(packageAFile, undefined, "/monorepo/packages/package-a");
+      expect(result.symbols).toContainEqual({
+        name: "unusedUtilA",
+        line: 3,
+        usedInModule: false
+      });
+      // utilA should not be in unused list because it's used by index.ts within the scope
+      expect(result.symbols.find(s => s.name === "utilA")).toBeUndefined();
+    });
+
+    it("should consider exports unused when referenced outside scope", () => {
+      // When scoped to package-a, utilA should be considered used only if referenced within package-a
+      const result = getPotentiallyUnused(packageAFile, undefined, "/monorepo/packages/package-a");
+      // utilA is used by index.ts within the scope, so it should not be unused
+      expect(result.symbols.find(s => s.name === "utilA")).toBeUndefined();
+    });
   });
 });
