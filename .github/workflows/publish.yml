@@ -28,9 +28,6 @@ jobs:
       - name: Configure pnpm
         run: pnpm config set git-checks false
 
-      - name: Set pnpm auth token
-        run: pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
-
       - name: Install dependencies
         run: pnpm i
 
@@ -68,7 +65,7 @@ jobs:
         if: steps.check-version.outputs.exists == 'false'
         run: |
           VERSION="${{ steps.check-version.outputs.version }}"
-          pnpm version $VERSION --no-git-tag-version
+          npm version $VERSION --no-git-tag-version
 
       - name: Publish to NPM
         if: steps.check-version.outputs.exists == 'false'
@@ -76,14 +73,13 @@ jobs:
           VERSION="${{ steps.check-version.outputs.version }}"
           if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+- ]]; then
             # Prerelease version - publish with beta tag
-            pnpm publish --no-git-checks --tag beta
+            npm publish --tag beta
           else
             # Release version - publish with latest tag
-            pnpm publish --no-git-checks --tag latest
+            npm publish --tag latest
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create Git Tag
         if: steps.check-version.outputs.exists == 'false'
