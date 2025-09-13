@@ -13,12 +13,11 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "prepublish": "rm -rf lib && yarn build",
-    "pretest": "npm run lint",
+    "prepublish": "rm -rf lib && pnpm build",
+    "pretest": "pnpm lint",
     "test": "jest --coverage",
     "test:integration": "sh integration/test.sh",
-    "lint": "eslint . --cache --fix --ext .ts,.tsx",
-    "semantic-release": "semantic-release"
+    "lint": "pnpm eslint . --cache --fix --ext .ts,.tsx"
   },
   "devDependencies": {
     "@types/jest": "^25.2.1",
@@ -38,11 +37,11 @@
   "dependencies": {
     "chalk": "4.1.2",
     "commander": "8.3.0",
-    "cosmiconfig": "^8.1.3",
+    "cosmiconfig": "8.1.3",
     "json5": "2.2.3",
-    "lodash": "^4.17.21",
-    "true-myth": "^4.1.0",
-    "ts-morph": "^21.0.0"
+    "lodash": "4.17.21",
+    "true-myth": "4.1.0",
+    "ts-morph": "21.0.0"
   },
   "files": [
     "/lib"
