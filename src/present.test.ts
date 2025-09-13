@@ -20,9 +20,7 @@ describe("present", () => {
     ].forEach((result) => state.onResult(result));
 
     it("should produce a presentable output", () => {
-      expect(JSON.stringify(present(state))).toMatchInlineSnapshot(
-        `"[\\"\\\\u001b[32mfoo.ts\\\\u001b[39m:\\\\u001b[33m0\\\\u001b[39m - \\\\u001b[36mfoo\\\\u001b[39m\\",\\"\\\\u001b[32mbar.ts\\\\u001b[39m:\\\\u001b[33m0\\\\u001b[39m - \\\\u001b[36mbar\\\\u001b[39m\\"]"`,
-      );
+      expect(JSON.stringify(present(state))).toMatchSnapshot();
     });
   });
 
@@ -64,9 +62,7 @@ describe("present", () => {
     ].forEach((result) => state.onResult(result));
 
     it("should produce a presentable output", () => {
-      expect(JSON.stringify(present(state))).toMatchInlineSnapshot(
-        `"[\\"\\\\u001b[32mfoo.ts\\\\u001b[39m:\\\\u001b[33m0\\\\u001b[39m - \\\\u001b[36mfoo\\\\u001b[39m\\\\u001b[90m (used in module)\\\\u001b[39m\\",\\"\\\\u001b[32mbar.ts\\\\u001b[39m:\\\\u001b[33m0\\\\u001b[39m - \\\\u001b[36mbar\\\\u001b[39m\\"]"`,
-      );
+      expect(JSON.stringify(present(state))).toMatchSnapshot();
     });
   });
 });

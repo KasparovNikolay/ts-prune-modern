@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`present when given state with exports used in own module should produce a presentable output 1`] = `"["\\u001b[32mfoo.ts\\u001b[39m:\\u001b[33m0\\u001b[39m - \\u001b[36mfoo\\u001b[39m\\u001b[90m (used in module)\\u001b[39m","\\u001b[32mbar.ts\\u001b[39m:\\u001b[33m0\\u001b[39m - \\u001b[36mbar\\u001b[39m"]"`;
+
+exports[`present when given state with unused exports should produce a presentable output 1`] = `"["\\u001b[32mfoo.ts\\u001b[39m:\\u001b[33m0\\u001b[39m - \\u001b[36mfoo\\u001b[39m","\\u001b[32mbar.ts\\u001b[39m:\\u001b[33m0\\u001b[39m - \\u001b[36mbar\\u001b[39m"]"`;
