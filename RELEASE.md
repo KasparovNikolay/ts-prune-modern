@@ -8,9 +8,12 @@
 2. Select **"Publish to NPM"** workflow
 3. Click **"Run workflow"** button
 4. Fill in the form:
-   - **Branch**: Choose branch to publish from (default: `master`)
-   - **Version**: Enter version number (e.g., `0.10.5`)
+   - **Version**: Enter version number (e.g., `0.10.5` or `1.0.0-rc.1`)
 5. Click **"Run workflow"**
+
+**Note**: 
+- Release versions (e.g., `1.0.0`) are published with `latest` tag
+- Prerelease versions (e.g., `1.0.0-rc.1`) are published with `beta` tag
 
 GitHub Actions will automatically:
 
