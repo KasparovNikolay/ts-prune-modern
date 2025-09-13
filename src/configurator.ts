@@ -1,5 +1,5 @@
 import { cosmiconfigSync } from "cosmiconfig";
-import program from "commander";
+import { Command } from "commander";
 import pick from "lodash/fp/pick";
 
 export interface IConfigInterface {
@@ -28,7 +28,9 @@ const onlyKnownConfigOptions = pick(Object.keys(defaultConfig));
 
 
 export const getConfig = () => {
-  const cliConfig = onlyKnownConfigOptions(program
+  const program = new Command();
+  
+  program
     .allowUnknownOption() // required for tests passing in unknown options (ex: https://github.com/nadeesha/ts-prune/runs/1125728070)
     .option('-p, --project [project]', 'TS project configuration file (tsconfig.json)', 'tsconfig.json')
     .option('-i, --ignore [regexp]', 'Path ignore RegExp pattern')
@@ -38,7 +40,9 @@ export const getConfig = () => {
     .option('--scope [path]', 'Limit analysis to files within the specified directory path (useful for monorepos)')
     .option('--parallel', 'Enable parallel processing for better performance (experimental)')
     .option('--performance', 'Show performance metrics and timing information')
-    .parse(process.argv))
+    .parse(process.argv);
+
+  const cliConfig = onlyKnownConfigOptions(program.opts())
 
   const defaultConfig = {
     project: "tsconfig.json"
