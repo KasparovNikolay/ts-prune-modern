@@ -26,6 +26,9 @@ jobs:
 
       - run: corepack enable
 
+      - name: Configure pnpm
+        run: pnpm config set git-checks false
+
       - name: Install dependencies
         run: pnpm i
 
@@ -60,7 +63,7 @@ jobs:
 
       - name: Publish to NPM
         if: steps.check-version.outputs.exists == 'false'
-        run: pnpm publish
+        run: pnpm publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
