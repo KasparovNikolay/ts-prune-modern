@@ -13,17 +13,18 @@ import {
 } from "ts-morph";
 import { isDefinitelyUsedImport } from "./util/isDefinitelyUsedImport";
 import { getModuleSourceFile } from "./util/getModuleSourceFile";
-import { getNodesOfKind } from './util/getNodesOfKind';
+import { getNodesOfKind } from "./util/getNodesOfKind";
 import countBy from "lodash/fp/countBy";
 import last from "lodash/fp/last";
 import { realpathSync } from "fs";
-import { IConfigInterface } from "./configurator";
+import path from "path";
+import { createHash } from "crypto";
 
 type OnResultType = (result: IAnalysedResult) => void;
 
 export enum AnalysisResultTypeEnum {
   POTENTIALLY_UNUSED,
-  DEFINITELY_USED
+  DEFINITELY_USED,
 }
 
 export type ResultSymbol = {
@@ -36,20 +37,18 @@ export type IAnalysedResult = {
   file: string;
   type: AnalysisResultTypeEnum;
   symbols: ResultSymbol[];
-}
+};
 
 function handleExportDeclaration(node: SourceFileReferencingNodes) {
-  return (node as ExportDeclaration).getNamedExports().map(n => n.getName());
+  return (node as ExportDeclaration).getNamedExports().map((n) => n.getName());
 }
 
 function handleImportDeclaration(node: ImportDeclaration) {
-  return (
-    [
-      ...node.getNamedImports().map(n => n.getName()),
-      ...(node.getDefaultImport() ? ['default'] : []),
-      ...(node.getNamespaceImport() ? trackWildcardUses(node) : []),
-    ]
-  );
+  return [
+    ...node.getNamedImports().map((n) => n.getName()),
+    ...(node.getDefaultImport() ? ["default"] : []),
+    ...(node.getNamespaceImport() ? trackWildcardUses(node) : []),
+  ];
 }
 
 /**
@@ -59,11 +58,18 @@ function handleImportDeclaration(node: ImportDeclaration) {
  */
 export const trackWildcardUses = (node: ImportDeclaration) => {
   const clause = node.getImportClause();
-  const namespaceImport = clause.getFirstChildByKind(ts.SyntaxKind.NamespaceImport);
+  const namespaceImport = clause?.getFirstChildByKind(
+    ts.SyntaxKind.NamespaceImport,
+  );
   const source = node.getSourceFile();
 
-  const uses = getNodesOfKind(source, ts.SyntaxKind.Identifier)
-    .filter(n => (n.getSymbol()?.getDeclarations() ?? []).includes(namespaceImport));
+  if (!namespaceImport) {
+    return [];
+  }
+
+  const uses = getNodesOfKind(source, ts.SyntaxKind.Identifier).filter((n) =>
+    (n.getSymbol()?.getDeclarations() ?? []).includes(namespaceImport),
+  );
 
   const symbols: string[] = [];
   for (const use of uses) {
@@ -82,7 +88,7 @@ export const trackWildcardUses = (node: ImportDeclaration) => {
     const el = use.getParentIfKind(SyntaxKind.ElementAccessExpression);
     if (el) {
       const arg = el.getArgumentExpression();
-      if (arg.getKind() === SyntaxKind.StringLiteral) {
+      if (arg && arg.getKind() === SyntaxKind.StringLiteral) {
         // e.g. `module['x']`
         symbols.push((arg as StringLiteral).getLiteralText());
         continue;
@@ -93,7 +99,7 @@ export const trackWildcardUses = (node: ImportDeclaration) => {
     if (varExp) {
       const nameNode = varExp.getNameNode();
       if (nameNode.getKind() === SyntaxKind.ObjectBindingPattern) {
-        const binder = (nameNode as ObjectBindingPattern);
+        const binder = nameNode as ObjectBindingPattern;
         for (const bindEl of binder.getElements()) {
           const p = bindEl.getPropertyNameNode();
           if (p) {
@@ -116,7 +122,7 @@ export const trackWildcardUses = (node: ImportDeclaration) => {
     }
 
     // If we don't understand a use, be conservative.
-    return ['*'];
+    return ["*"];
   }
 
   return symbols;
@@ -152,119 +158,218 @@ const mustIgnore = (symbol: Symbol, file: SourceFile) => {
 };
 
 const lineNumber = (symbol: Symbol) =>
-  symbol.getDeclarations().map(decl => decl.getStartLineNumber()).reduce((currentMin, current) => Math.min(currentMin, current), Infinity)
+  symbol
+    .getDeclarations()
+    .map((decl) => decl.getStartLineNumber())
+    .reduce((currentMin, current) => Math.min(currentMin, current), Infinity);
+
+const isFileInScope = (filePath: string, scopePath?: string): boolean => {
+  if (!scopePath) {
+    return true; // No scope restriction
+  }
+
+  const normalizedScopePath = path.resolve(scopePath);
+  const normalizedFilePath = path.resolve(filePath);
+
+  return normalizedFilePath.startsWith(normalizedScopePath);
+};
+
+// Cache for analysis results
+export const analysisCache = new Map<string, IAnalysedResult>();
+
+const createCacheKey = (
+  filePath: string,
+  skipper?: RegExp,
+  scopePath?: string,
+): string => {
+  const key = `${filePath}|${skipper?.toString() || "no-skip"}|${scopePath || "no-scope"}`;
+  return createHash("md5").update(key).digest("hex");
+};
 
 export const getExported = (file: SourceFile) =>
-  file.getExportSymbols().filter(symbol => !mustIgnore(symbol, file))
-  .map(symbol => ({
-    name: symbol.compilerSymbol.name,
-    line: symbol.getDeclarations().every(decl => decl.getSourceFile() === file) ? lineNumber(symbol) : undefined,
-  }));
+  file
+    .getExportSymbols()
+    .filter((symbol) => !mustIgnore(symbol, file))
+    .map((symbol) => ({
+      name: symbol.compilerSymbol.name,
+      line: symbol
+        .getDeclarations()
+        .every((decl) => decl.getSourceFile() === file)
+        ? lineNumber(symbol)
+        : undefined,
+    }));
 
 /* Returns all the "import './y';" imports, which must be for side effects */
 export const importsForSideEffects = (file: SourceFile): IAnalysedResult[] =>
   file
     .getImportDeclarations()
-    .map(decl => ({
+    .map((decl) => ({
       moduleSourceFile: getModuleSourceFile(decl),
-      definitelyUsed: isDefinitelyUsedImport(decl)
+      definitelyUsed: isDefinitelyUsedImport(decl),
     }))
-    .filter(meta => meta.definitelyUsed && !!meta.moduleSourceFile)
+    .filter((meta) => meta.definitelyUsed && !!meta.moduleSourceFile)
     .map(({ moduleSourceFile }) => ({
-      file: moduleSourceFile,
-      symbols: [],
-      type: AnalysisResultTypeEnum.DEFINITELY_USED
+      file: moduleSourceFile!,
+      symbols: [] as ResultSymbol[],
+      type: AnalysisResultTypeEnum.DEFINITELY_USED,
     }));
 
 const exportWildCards = (file: SourceFile): IAnalysedResult[] =>
   file
     .getExportDeclarations()
-    .filter(decl => decl.getText().includes("*"))
+    .filter((decl) => decl.getText().includes("*"))
     .map((decl) => ({
-      file: getModuleSourceFile(decl),
-      symbols: [],
-      type: AnalysisResultTypeEnum.DEFINITELY_USED
+      file: getModuleSourceFile(decl)!,
+      symbols: [] as ResultSymbol[],
+      type: AnalysisResultTypeEnum.DEFINITELY_USED,
     }));
 
-const getDefinitelyUsed = (file: SourceFile): IAnalysedResult[] => ([
+const getDefinitelyUsed = (file: SourceFile): IAnalysedResult[] => [
   ...importsForSideEffects(file),
   ...exportWildCards(file),
-]);
+];
 
 const getReferences = (
   originalList: SourceFileReferencingNodes[],
-  skipper?: RegExp
+  skipper?: RegExp,
 ): SourceFileReferencingNodes[] => {
   if (skipper) {
-    return originalList.filter(file =>
-      !skipper.test(file.getSourceFile().compilerNode.fileName)
+    return originalList.filter(
+      (file) => !skipper.test(file.getSourceFile().compilerNode.fileName),
     );
   }
   return originalList;
-}
-export const getPotentiallyUnused = (file: SourceFile, skipper?: RegExp): IAnalysedResult => {
+};
+export const getPotentiallyUnused = (
+  file: SourceFile,
+  skipper?: RegExp,
+  scopePath?: string,
+): IAnalysedResult => {
+  const filePath = file.getFilePath();
+  const cacheKey = createCacheKey(filePath, skipper, scopePath);
+
+  // Check cache first
+  if (analysisCache.has(cacheKey)) {
+    return analysisCache.get(cacheKey)!;
+  }
+
   const exported = getExported(file);
 
   const idsInFile = file.getDescendantsOfKind(ts.SyntaxKind.Identifier);
-  const referenceCounts = countBy(x => x)((idsInFile || []).map(node => node.getText()));
-  const referencedInFile = Object.entries(referenceCounts)
-    .reduce(
-      (previous, [name, count]) => previous.concat(count > 1 ? [name] : []),
-      []
-    );
+  const referenceCounts = countBy((x) => x)(
+    (idsInFile || []).map((node) => node.getText()),
+  );
+  const referencedInFile = Object.entries(referenceCounts).reduce(
+    (previous: string[], [name, count]) =>
+      previous.concat(count > 1 ? [name] : []),
+    [],
+  );
 
   const referenced = getReferences(
     file.getReferencingNodesInOtherSourceFiles(),
-    skipper
-  ).reduce(
-      (previous, node: SourceFileReferencingNodes) => {
-        const kind = node.getKind().toString();
-        const value = nodeHandlers?.[kind]?.(node) ?? [];
+    skipper,
+  )
+    .filter((node: SourceFileReferencingNodes) => {
+      // Only consider references from files within the scope
+      const referencingFile = node.getSourceFile();
+      return isFileInScope(referencingFile.getFilePath(), scopePath);
+    })
+    .reduce((previous: string[], node: SourceFileReferencingNodes) => {
+      const kind = node.getKind().toString();
+      const value = nodeHandlers?.[kind]?.(node as any) ?? [];
 
-        return previous.concat(value);
-      },
-      []
-    );
+      return previous.concat(value);
+    }, []);
 
-  const unused = referenced.includes("*") ? [] :
-    exported.filter(exp => !referenced.includes(exp.name))
-      .map(exp => ({ ...exp, usedInModule: referencedInFile.includes(exp.name) }))
+  const unused = referenced.includes("*")
+    ? []
+    : exported
+        .filter((exp) => !referenced.includes(exp.name))
+        .map((exp) => ({
+          ...exp,
+          usedInModule: referencedInFile.includes(exp.name),
+        }));
 
-  return {
+  const result = {
     file: file.getFilePath(),
     symbols: unused,
-    type: AnalysisResultTypeEnum.POTENTIALLY_UNUSED
+    type: AnalysisResultTypeEnum.POTENTIALLY_UNUSED,
   };
+
+  // Cache the result
+  analysisCache.set(cacheKey, result);
+
+  return result;
 };
 
-const emitTsConfigEntrypoints = (entrypoints: string[], onResult: OnResultType) =>
-  entrypoints.map(file => ({
-    file,
-    symbols: [],
-    type: AnalysisResultTypeEnum.DEFINITELY_USED,
-  })).forEach(emittable => onResult(emittable))
+const emitTsConfigEntrypoints = (
+  entrypoints: string[],
+  onResult: OnResultType,
+) =>
+  entrypoints
+    .map((file) => ({
+      file,
+      symbols: [] as ResultSymbol[],
+      type: AnalysisResultTypeEnum.DEFINITELY_USED,
+    }))
+    .forEach((emittable) => onResult(emittable));
 
-const filterSkippedFiles = (sourceFiles: SourceFile[], skipper: RegExp | undefined) => {
+const filterSkippedFiles = (
+  sourceFiles: SourceFile[],
+  skipper: RegExp | undefined,
+) => {
   if (!skipper) {
     return sourceFiles;
   }
 
-  return sourceFiles.filter(file => !skipper.test(file.getSourceFile().compilerNode.fileName));
-}
+  return sourceFiles.filter(
+    (file) => !skipper.test(file.getSourceFile().compilerNode.fileName),
+  );
+};
 
-export const analyze = (project: Project, onResult: OnResultType, entrypoints: string[], skipPattern?: string) => {
+const processFile = (
+  file: SourceFile,
+  skipper?: RegExp,
+  scopePath?: string,
+): IAnalysedResult[] => {
+  return [
+    getPotentiallyUnused(file, skipper, scopePath),
+    ...getDefinitelyUsed(file),
+  ].filter((result) => result.file); // Filter out null filepaths
+};
+
+export const analyze = async (
+  project: Project,
+  onResult: OnResultType,
+  entrypoints: string[],
+  skipPattern?: string,
+  scopePath?: string,
+  parallel: boolean = false,
+) => {
   const skipper = skipPattern ? new RegExp(skipPattern) : undefined;
+  const files = filterSkippedFiles(project.getSourceFiles(), skipper);
 
-  filterSkippedFiles(project.getSourceFiles(), skipper)
-  .forEach(file => {
-    [
-      getPotentiallyUnused(file, skipper),
-      ...getDefinitelyUsed(file),
-    ].forEach(result => {
-      if (!result.file) return // Prevent passing along a "null" filepath. Fixes #105
-      onResult({ ...result, file: realpathSync(result.file) })
+  if (parallel && files.length > 1) {
+    // Parallel processing for better performance
+    const results = await Promise.all(
+      files.map((file) => processFile(file, skipper, scopePath))
+    );
+
+    results.forEach((fileResults) => {
+      fileResults.forEach((result) => {
+        if (!result.file) return; // Prevent passing along a "null" filepath. Fixes #105
+        onResult({ ...result, file: realpathSync(result.file) });
+      });
     });
-  });
+  } else {
+    // Sequential processing (original behavior)
+    files.forEach((file) => {
+      processFile(file, skipper, scopePath).forEach((result) => {
+        if (!result.file) return; // Prevent passing along a "null" filepath. Fixes #105
+        onResult({ ...result, file: realpathSync(result.file) });
+      });
+    });
+  }
 
   emitTsConfigEntrypoints(entrypoints, onResult);
 };

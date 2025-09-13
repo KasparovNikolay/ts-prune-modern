@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`present when given state with exports used in own module should produce a presentable output 1`] = `"["foo.ts:0 - foo (used in module)","bar.ts:0 - bar"]"`;
+
+exports[`present when given state with unused exports should produce a presentable output 1`] = `"["foo.ts:0 - foo","bar.ts:0 - bar"]"`;

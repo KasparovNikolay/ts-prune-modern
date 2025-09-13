@@ -13,12 +13,18 @@ jobs:
       - name: Setup node version
         uses: actions/setup-node@v1
         with:
-          node-version: "12"
+          node-version: "24"
+
+      - run: corepack enable
+
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install
+
       - name: Build typescript
-        run: yarn build
+        run: pnpm build
+
       - name: Unit tests
-        run: yarn test
+        run: pnpm test
+
       - name: Integration tests
         run: yarn test:integration

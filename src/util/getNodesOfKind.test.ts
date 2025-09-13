@@ -26,7 +26,7 @@ test("should get nodes of a kind", () => {
 
   expect(
     getNodesOfKind(star, ts.SyntaxKind.PropertyAccessExpression).map((n) =>
-      n.getText()
-    )
+      n.getText(),
+    ),
   ).toEqual(["foo.x", "foo.y"]);
 });

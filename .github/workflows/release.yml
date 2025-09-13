@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+      - run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm i
+
+      - name: Run tests
+        run: |
+          pnpm test
+          pnpm test:integration
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Update package.json version
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          npm version $VERSION --no-git-tag-version
+
+      - name: Publish to NPM
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## What's Changed
+
+            - Updated TypeScript to 5.5.3
+            - Updated Commander to 8.3.0  
+            - Updated JSON5 to 2.2.3
+            - Updated ts-morph to 21.0.1
+            - Added performance optimizations
+            - Added scope option for monorepos
+            - Added parallel processing option
+            - Added performance metrics
+
+            ## New Features
+
+            - `--scope` - Limit analysis to specific directory (useful for monorepos)
+            - `--parallel` - Enable parallel processing for better performance  
+            - `--performance` - Show performance metrics and timing information
+
+            ## Performance Improvements
+
+            - Automatic caching of analysis results
+            - Parallel file processing
+            - Optimized project loading for scope
+            - Reduced memory usage in monorepos
+          draft: false
+          prerelease: false
