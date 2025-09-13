@@ -9,6 +9,8 @@ export interface IConfigInterface {
   skip?: string;
   unusedInModule?: string;
   scope?: string;
+  parallel?: boolean;
+  performance?: boolean;
 }
 
 const defaultConfig: IConfigInterface = {
@@ -18,6 +20,8 @@ const defaultConfig: IConfigInterface = {
   skip: undefined,
   unusedInModule: undefined,
   scope: undefined,
+  parallel: false,
+  performance: false,
 }
 
 const onlyKnownConfigOptions = pick(Object.keys(defaultConfig));
@@ -32,6 +36,8 @@ export const getConfig = () => {
     .option('-s, --skip [regexp]', 'skip these files when determining whether code is used')
     .option('-u, --unusedInModule', 'Skip files that are used in module (marked as `used in module`)')
     .option('--scope [path]', 'Limit analysis to files within the specified directory path (useful for monorepos)')
+    .option('--parallel', 'Enable parallel processing for better performance (experimental)')
+    .option('--performance', 'Show performance metrics and timing information')
     .parse(process.argv))
 
   const defaultConfig = {

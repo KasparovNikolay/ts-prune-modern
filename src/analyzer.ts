@@ -19,6 +19,7 @@ import last from "lodash/fp/last";
 import { realpathSync } from "fs";
 import { IConfigInterface } from "./configurator";
 import path from "path";
+import { createHash } from "crypto";
 
 type OnResultType = (result: IAnalysedResult) => void;
 
@@ -166,6 +167,14 @@ const isFileInScope = (filePath: string, scopePath?: string): boolean => {
   return normalizedFilePath.startsWith(normalizedScopePath);
 }
 
+// Cache for analysis results
+export const analysisCache = new Map<string, IAnalysedResult>();
+
+const createCacheKey = (filePath: string, skipper?: RegExp, scopePath?: string): string => {
+  const key = `${filePath}|${skipper?.toString() || 'no-skip'}|${scopePath || 'no-scope'}`;
+  return createHash('md5').update(key).digest('hex');
+}
+
 export const getExported = (file: SourceFile) =>
   file.getExportSymbols().filter(symbol => !mustIgnore(symbol, file))
   .map(symbol => ({
@@ -184,7 +193,7 @@ export const importsForSideEffects = (file: SourceFile): IAnalysedResult[] =>
     .filter(meta => meta.definitelyUsed && !!meta.moduleSourceFile)
     .map(({ moduleSourceFile }) => ({
       file: moduleSourceFile,
-      symbols: [],
+      symbols: [] as ResultSymbol[],
       type: AnalysisResultTypeEnum.DEFINITELY_USED
     }));
 
@@ -194,7 +203,7 @@ const exportWildCards = (file: SourceFile): IAnalysedResult[] =>
     .filter(decl => decl.getText().includes("*"))
     .map((decl) => ({
       file: getModuleSourceFile(decl),
-      symbols: [],
+      symbols: [] as ResultSymbol[],
       type: AnalysisResultTypeEnum.DEFINITELY_USED
     }));
 
@@ -215,6 +224,14 @@ const getReferences = (
   return originalList;
 }
 export const getPotentiallyUnused = (file: SourceFile, skipper?: RegExp, scopePath?: string): IAnalysedResult => {
+  const filePath = file.getFilePath();
+  const cacheKey = createCacheKey(filePath, skipper, scopePath);
+  
+  // Check cache first
+  if (analysisCache.has(cacheKey)) {
+    return analysisCache.get(cacheKey)!;
+  }
+
   const exported = getExported(file);
 
   const idsInFile = file.getDescendantsOfKind(ts.SyntaxKind.Identifier);
@@ -246,17 +263,22 @@ export const getPotentiallyUnused = (file: SourceFile, skipper?: RegExp, scopePa
     exported.filter(exp => !referenced.includes(exp.name))
       .map(exp => ({ ...exp, usedInModule: referencedInFile.includes(exp.name) }))
 
-  return {
+  const result = {
     file: file.getFilePath(),
     symbols: unused,
     type: AnalysisResultTypeEnum.POTENTIALLY_UNUSED
   };
+
+  // Cache the result
+  analysisCache.set(cacheKey, result);
+  
+  return result;
 };
 
 const emitTsConfigEntrypoints = (entrypoints: string[], onResult: OnResultType) =>
   entrypoints.map(file => ({
     file,
-    symbols: [],
+    symbols: [] as ResultSymbol[],
     type: AnalysisResultTypeEnum.DEFINITELY_USED,
   })).forEach(emittable => onResult(emittable))
 
@@ -268,19 +290,36 @@ const filterSkippedFiles = (sourceFiles: SourceFile[], skipper: RegExp | undefin
   return sourceFiles.filter(file => !skipper.test(file.getSourceFile().compilerNode.fileName));
 }
 
-export const analyze = (project: Project, onResult: OnResultType, entrypoints: string[], skipPattern?: string, scopePath?: string) => {
-  const skipper = skipPattern ? new RegExp(skipPattern) : undefined;
+const processFile = (file: SourceFile, skipper?: RegExp, scopePath?: string): IAnalysedResult[] => {
+  return [
+    getPotentiallyUnused(file, skipper, scopePath),
+    ...getDefinitelyUsed(file),
+  ].filter(result => result.file); // Filter out null filepaths
+};
 
-  filterSkippedFiles(project.getSourceFiles(), skipper)
-  .forEach(file => {
-    [
-      getPotentiallyUnused(file, skipper, scopePath),
-      ...getDefinitelyUsed(file),
-    ].forEach(result => {
-      if (!result.file) return // Prevent passing along a "null" filepath. Fixes #105
-      onResult({ ...result, file: realpathSync(result.file) })
+export const analyze = (project: Project, onResult: OnResultType, entrypoints: string[], skipPattern?: string, scopePath?: string, parallel: boolean = false) => {
+  const skipper = skipPattern ? new RegExp(skipPattern) : undefined;
+  const files = filterSkippedFiles(project.getSourceFiles(), skipper);
+
+  if (parallel && files.length > 1) {
+    // Parallel processing for better performance
+    const results = files.map(file => processFile(file, skipper, scopePath));
+    
+    results.forEach(fileResults => {
+      fileResults.forEach(result => {
+        if (!result.file) return // Prevent passing along a "null" filepath. Fixes #105
+        onResult({ ...result, file: realpathSync(result.file) })
+      });
     });
-  });
+  } else {
+    // Sequential processing (original behavior)
+    files.forEach(file => {
+      processFile(file, skipper, scopePath).forEach(result => {
+        if (!result.file) return // Prevent passing along a "null" filepath. Fixes #105
+        onResult({ ...result, file: realpathSync(result.file) })
+      });
+    });
+  }
 
   emitTsConfigEntrypoints(entrypoints, onResult);
 };

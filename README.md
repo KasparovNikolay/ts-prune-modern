@@ -94,6 +94,30 @@ ts-prune --scope packages/my-package --skip "\.test\.ts$" --error
 
 This is particularly useful in monorepos where you want to find unused exports within a specific package without considering usage from other packages in the monorepo.
 
+#### Performance Optimization
+
+For large projects, you can use several options to improve performance:
+
+```bash
+# Enable parallel processing for faster analysis
+ts-prune --parallel
+
+# Show performance metrics to monitor analysis speed
+ts-prune --performance
+
+# Combine scope and parallel processing for maximum performance
+ts-prune --scope packages/my-package --parallel --performance
+
+# Use caching (enabled by default) and parallel processing
+ts-prune --parallel --performance --skip "\.test\.ts$"
+```
+
+**Performance Tips:**
+- Use `--scope` to limit analysis to specific directories
+- Enable `--parallel` for projects with many files
+- Use `--performance` to monitor and optimize analysis speed
+- Caching is enabled by default and significantly improves repeated runs
+
 ### Configuration
 
 ts-prune supports CLI and file configuration via [cosmiconfig](https://github.com/davidtheclark/cosmiconfig#usage) (all file formats are supported).
@@ -106,6 +130,8 @@ ts-prune supports CLI and file configuration via [cosmiconfig](https://github.co
 - `-s, --skip` - skip these files when determining whether code is used. (For example, `.test.ts?` will stop ts-prune from considering an export in test file usages)
 - `-u, --unusedInModule` - skip files that are used in module (marked as `used in module`)
 - `--scope` - limit analysis to files within the specified directory path (useful for monorepos)
+- `--parallel` - enable parallel processing for better performance (experimental)
+- `--performance` - show performance metrics and timing information
 
 CLI configuration options:
 
