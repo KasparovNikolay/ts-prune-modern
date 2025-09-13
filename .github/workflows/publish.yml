@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to publish (e.g., 0.10.5)'
+        description: "Version to publish (e.g., 0.10.5)"
         required: true
         type: string
 
@@ -19,13 +19,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - run: corepack enable
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm i
 
       - name: Run tests
         run: |
@@ -43,9 +43,9 @@ jobs:
           else
             VERSION=${GITHUB_REF#refs/tags/v}
           fi
-          
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          
+
           # Check if version already exists on npm
           if npm view ts-prune@$VERSION version > /dev/null 2>&1; then
             echo "Version $VERSION already exists on npm"
@@ -77,7 +77,7 @@ jobs:
           release_name: Release ${{ steps.check-version.outputs.version }}
           body: |
             ## What's Changed
-            
+
             - Updated TypeScript to 5.5.3
             - Updated Commander to 8.3.0
             - Updated JSON5 to 2.2.3
@@ -86,20 +86,20 @@ jobs:
             - Added scope option for monorepos
             - Added parallel processing option
             - Added performance metrics
-            
+
             ## New Features
-            
+
             - `--scope` - Limit analysis to specific directory (useful for monorepos)
             - `--parallel` - Enable parallel processing for better performance
             - `--performance` - Show performance metrics and timing information
-            
+
             ## Performance Improvements
-            
+
             - Automatic caching of analysis results
             - Parallel file processing
             - Optimized project loading for scope
             - Reduced memory usage in monorepos
-            
+
             Full Changelog: https://github.com/nadeesha/ts-prune/compare/${{ github.event.before }}...${{ github.sha }}
           draft: false
           prerelease: false

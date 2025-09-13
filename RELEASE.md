@@ -13,6 +13,7 @@
 5. Click **"Run workflow"**
 
 GitHub Actions will automatically:
+
 - Run tests
 - Build the project
 - Check if version already exists
@@ -24,17 +25,20 @@ GitHub Actions will automatically:
 ### Manual Release (if needed)
 
 1. **Update version**:
+
    ```bash
    npm version patch  # 0.10.4 -> 0.10.5
    ```
 
 2. **Run tests**:
+
    ```bash
    pnpm test
    pnpm test:integration
    ```
 
 3. **Build and publish**:
+
    ```bash
    pnpm build
    npm publish

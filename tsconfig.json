@@ -8,18 +8,11 @@
     "outDir": "lib",
     "sourceMap": true,
     "declaration": true,
-    "lib": [
-      "es2017"
-    ],
+    "lib": ["es2017"],
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true
   },
-  "files": [
-    "src/index.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.spec.ts"
-  ]
+  "files": ["src/index.ts"],
+  "exclude": ["node_modules", "**/*.spec.ts"]
 }

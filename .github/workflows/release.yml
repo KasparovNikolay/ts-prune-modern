@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   release:
@@ -16,8 +16,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
       - run: corepack enable
 
       - name: Install dependencies
@@ -57,7 +57,7 @@ jobs:
           release_name: Release ${{ steps.get_version.outputs.version }}
           body: |
             ## What's Changed
-            
+
             - Updated TypeScript to 5.5.3
             - Updated Commander to 8.3.0  
             - Updated JSON5 to 2.2.3
@@ -66,15 +66,15 @@ jobs:
             - Added scope option for monorepos
             - Added parallel processing option
             - Added performance metrics
-            
+
             ## New Features
-            
+
             - `--scope` - Limit analysis to specific directory (useful for monorepos)
             - `--parallel` - Enable parallel processing for better performance  
             - `--performance` - Show performance metrics and timing information
-            
+
             ## Performance Improvements
-            
+
             - Automatic caching of analysis results
             - Parallel file processing
             - Optimized project loading for scope

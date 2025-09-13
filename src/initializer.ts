@@ -8,9 +8,9 @@ export const initialize = (tsConfigFilePath: string, scopePath?: string) => {
   if (scopePath) {
     const normalizedScopePath = path.resolve(scopePath);
     const sourceFiles = project.getSourceFiles();
-    
+
     // Filter out files outside the scope to reduce memory usage
-    sourceFiles.forEach(file => {
+    sourceFiles.forEach((file) => {
       const filePath = file.getFilePath();
       if (!filePath.startsWith(normalizedScopePath)) {
         // Remove file from project to reduce memory usage
@@ -20,6 +20,6 @@ export const initialize = (tsConfigFilePath: string, scopePath?: string) => {
   }
 
   return {
-    project
+    project,
   };
 };
