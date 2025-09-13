@@ -28,6 +28,11 @@ jobs:
       - name: Configure pnpm
         run: pnpm config set git-checks false
 
+      - name: Configure npm authentication
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          echo "registry=https://registry.npmjs.org/" >> ~/.npmrc
+
       - name: Install dependencies
         run: pnpm i
 
@@ -67,19 +72,26 @@ jobs:
           VERSION="${{ steps.check-version.outputs.version }}"
           npm version $VERSION --no-git-tag-version
 
+      - name: Verify npm authentication
+        if: steps.check-version.outputs.exists == 'false'
+        run: |
+          npm whoami
+          echo "NPM authentication successful"
+
       - name: Publish to NPM
         if: steps.check-version.outputs.exists == 'false'
         run: |
           VERSION="${{ steps.check-version.outputs.version }}"
           if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+- ]]; then
             # Prerelease version - publish with beta tag
-            npm publish --tag beta
+            pnpm publish --no-git-checks --tag beta
           else
             # Release version - publish with latest tag
-            npm publish --tag latest
+            pnpm publish --no-git-checks --tag latest
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create Git Tag
         if: steps.check-version.outputs.exists == 'false'
