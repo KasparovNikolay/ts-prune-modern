@@ -1,3 +1,6 @@
+// Disable colors for consistent testing
+process.env.FORCE_COLOR = "0";
+
 import { State } from "./state";
 import { AnalysisResultTypeEnum } from "./analyzer";
 import { present } from "./presenter";
