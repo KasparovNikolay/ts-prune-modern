@@ -8,7 +8,7 @@ import { State } from "./state";
 import { present, USED_IN_MODULE } from "./presenter";
 import { IConfigInterface } from "./configurator";
 
-export const run = (config: IConfigInterface, output = console.log) => {
+export const run = async (config: IConfigInterface, output = console.log) => {
   const startTime = process.hrtime.bigint();
 
   const tsConfigPath = path.resolve(config.project!);
@@ -23,7 +23,7 @@ export const run = (config: IConfigInterface, output = console.log) => {
   const state = new State();
 
   const analysisStartTime = process.hrtime.bigint();
-  analyze(
+  await analyze(
     project,
     state.onResult,
     entrypoints,

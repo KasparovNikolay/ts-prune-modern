@@ -17,7 +17,6 @@ import { getNodesOfKind } from "./util/getNodesOfKind";
 import countBy from "lodash/fp/countBy";
 import last from "lodash/fp/last";
 import { realpathSync } from "fs";
-import { IConfigInterface } from "./configurator";
 import path from "path";
 import { createHash } from "crypto";
 
@@ -339,7 +338,7 @@ const processFile = (
   ].filter((result) => result.file); // Filter out null filepaths
 };
 
-export const analyze = (
+export const analyze = async (
   project: Project,
   onResult: OnResultType,
   entrypoints: string[],
@@ -352,7 +351,9 @@ export const analyze = (
 
   if (parallel && files.length > 1) {
     // Parallel processing for better performance
-    const results = files.map((file) => processFile(file, skipper, scopePath));
+    const results = await Promise.all(
+      files.map((file) => processFile(file, skipper, scopePath))
+    );
 
     results.forEach((fileResults) => {
       fileResults.forEach((result) => {

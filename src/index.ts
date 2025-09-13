@@ -7,10 +7,13 @@ import { getConfig } from "./configurator";
 import { run } from "./runner";
 
 const config = getConfig();
-const resultCount = run(config);
-
-if (resultCount > 0 && config.error) {
+run(config).then((resultCount) => {
+  if (resultCount > 0 && config.error) {
+    process.exit(1);
+  } else {
+    process.exit(0);
+  }
+}).catch((error) => {
+  console.error("Error:", error);
   process.exit(1);
-} else {
-  process.exit(0);
-}
+});
