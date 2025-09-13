@@ -11,7 +11,8 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,6 +27,9 @@ jobs:
 
       - name: Configure pnpm
         run: pnpm config set git-checks false
+
+      - name: Set npm auth token
+        run: npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
 
       - name: Install dependencies
         run: pnpm i
