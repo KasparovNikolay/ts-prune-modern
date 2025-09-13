@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2017",
     "module": "commonjs",
     "noImplicitAny": true,
     "removeComments": true,
@@ -9,9 +9,11 @@
     "sourceMap": true,
     "declaration": true,
     "lib": [
-      "esnext"
+      "es2017"
     ],
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true
   },
   "files": [
     "src/index.ts"

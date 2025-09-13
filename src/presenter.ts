@@ -20,5 +20,5 @@ export const present = (state: State): string[] => {
       ({file, symbols}) => symbols.map(sym => formatOutput(file, sym))
     );
 
-  return [].concat.apply([], unused2D);
+  return ([] as string[]).concat.apply([], unused2D);
 };

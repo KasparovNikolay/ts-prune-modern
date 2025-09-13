@@ -61,8 +61,12 @@ function handleImportDeclaration(node: ImportDeclaration) {
  */
 export const trackWildcardUses = (node: ImportDeclaration) => {
   const clause = node.getImportClause();
-  const namespaceImport = clause.getFirstChildByKind(ts.SyntaxKind.NamespaceImport);
+  const namespaceImport = clause?.getFirstChildByKind(ts.SyntaxKind.NamespaceImport);
   const source = node.getSourceFile();
+
+  if (!namespaceImport) {
+    return [];
+  }
 
   const uses = getNodesOfKind(source, ts.SyntaxKind.Identifier)
     .filter(n => (n.getSymbol()?.getDeclarations() ?? []).includes(namespaceImport));
@@ -84,7 +88,7 @@ export const trackWildcardUses = (node: ImportDeclaration) => {
     const el = use.getParentIfKind(SyntaxKind.ElementAccessExpression);
     if (el) {
       const arg = el.getArgumentExpression();
-      if (arg.getKind() === SyntaxKind.StringLiteral) {
+      if (arg && arg.getKind() === SyntaxKind.StringLiteral) {
         // e.g. `module['x']`
         symbols.push((arg as StringLiteral).getLiteralText());
         continue;
@@ -192,7 +196,7 @@ export const importsForSideEffects = (file: SourceFile): IAnalysedResult[] =>
     }))
     .filter(meta => meta.definitelyUsed && !!meta.moduleSourceFile)
     .map(({ moduleSourceFile }) => ({
-      file: moduleSourceFile,
+      file: moduleSourceFile!,
       symbols: [] as ResultSymbol[],
       type: AnalysisResultTypeEnum.DEFINITELY_USED
     }));
@@ -202,7 +206,7 @@ const exportWildCards = (file: SourceFile): IAnalysedResult[] =>
     .getExportDeclarations()
     .filter(decl => decl.getText().includes("*"))
     .map((decl) => ({
-      file: getModuleSourceFile(decl),
+      file: getModuleSourceFile(decl)!,
       symbols: [] as ResultSymbol[],
       type: AnalysisResultTypeEnum.DEFINITELY_USED
     }));
@@ -238,7 +242,7 @@ export const getPotentiallyUnused = (file: SourceFile, skipper?: RegExp, scopePa
   const referenceCounts = countBy(x => x)((idsInFile || []).map(node => node.getText()));
   const referencedInFile = Object.entries(referenceCounts)
     .reduce(
-      (previous, [name, count]) => previous.concat(count > 1 ? [name] : []),
+      (previous: string[], [name, count]) => previous.concat(count > 1 ? [name] : []),
       []
     );
 
@@ -250,9 +254,9 @@ export const getPotentiallyUnused = (file: SourceFile, skipper?: RegExp, scopePa
     const referencingFile = node.getSourceFile();
     return isFileInScope(referencingFile.getFilePath(), scopePath);
   }).reduce(
-      (previous, node: SourceFileReferencingNodes) => {
+      (previous: string[], node: SourceFileReferencingNodes) => {
         const kind = node.getKind().toString();
-        const value = nodeHandlers?.[kind]?.(node) ?? [];
+        const value = nodeHandlers?.[kind]?.(node as any) ?? [];
 
         return previous.concat(value);
       },

@@ -11,7 +11,7 @@ import { IConfigInterface } from "./configurator";
 export const run = (config: IConfigInterface, output = console.log) => {
   const startTime = process.hrtime.bigint();
   
-  const tsConfigPath = path.resolve(config.project);
+  const tsConfigPath = path.resolve(config.project!);
   const { project } = initialize(tsConfigPath, config.scope);
   const tsConfigJSON = JSON5.parse(fs.readFileSync(tsConfigPath, "utf-8"));
 
@@ -29,7 +29,7 @@ export const run = (config: IConfigInterface, output = console.log) => {
   const presented = present(state);
 
   const filterUsedInModule = config.unusedInModule !== undefined ? presented.filter(file => !file.includes(USED_IN_MODULE)) : presented;
-  const filterIgnored = config.ignore !== undefined ? filterUsedInModule.filter(file => !file.match(config.ignore)) : filterUsedInModule;
+  const filterIgnored = config.ignore !== undefined ? filterUsedInModule.filter(file => !file.match(config.ignore!)) : filterUsedInModule;
 
   filterIgnored.forEach(value => {
     output(value);
